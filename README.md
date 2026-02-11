@@ -190,17 +190,18 @@ You can set some additional configuration if you required:
 ## Testing
 Controllers that was tested on different host modes.
  
-| Tested Controllers     | 	Modes (Host)            | 
+| Tested Controllers     | 	Modes (Host)          |     
 |------------------------|---------------------------|
 | Logitech F710          | Xinput, Dinput            |
 | 8BitDo Ultimate 2.4G   | Xinput, Dinput, Bluetooth |
-| 8BitDo Ultimate C 2.4G | Xinput, Dinput            |
+| 8BitDo Ultimate C 2.4G | Xinput, Dinput            |     
 | DualShock (PS1)        | PS1/PS2                   |
 | DualShock 2 (PS2)      | PS1/PS2                   |
 | DualShock 3 (PS3)      | Dinput                    |
 | DualShock 4 (PS4)      | Dinput, Bluetooth         |
 | Keyboard HP KB-0316    | Keyboard PS/2             |
 | Nintendo 64 Controller | Nintendo 64               |
+| Rapoo 9010M            | Dinput (Keyboard + Mouse) |
 
 ---
 

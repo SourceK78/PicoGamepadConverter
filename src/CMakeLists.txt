@@ -33,6 +33,7 @@ target_sources(${target_name} PRIVATE
  device_files/xinput/xinput_driver.c
  device_files/switch/hid_driver.c
  host_files/xinput_host.c
+ host_files/process_keyboard.c
  # can use 'tinyusb_pico_pio_usb' library later when pico-sdk is updated
  ${PICO_TINYUSB_PATH}/src/portable/raspberrypi/pio_usb/dcd_pio_usb.c
  #${PICO_TINYUSB_PATH}/src/portable/raspberrypi/pio_usb/hcd_pio_usb.c

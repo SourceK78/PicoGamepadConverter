@@ -29,6 +29,7 @@
 //Host
 #include "xinput_host.h"
 #include "ps2kbd.h"
+#include "process_keyboard.h"
 #include "psx.h"
 #include "n64_controller.h"
 
@@ -132,6 +133,11 @@ static GCReport gcReport = {
 };
 
 static uint8_t joybus_response[4];
+
+static keyboard_mouse_report_t keyboard_composite = {
+        .keyboard_report = 0,
+        .mouse_report = {0}
+};
 
 #if PICO_W
 static WiimoteReport wiimote_report = {
@@ -588,35 +594,44 @@ void tuh_xinput_umount_cb(uint8_t dev_addr, uint8_t instance) {
 // therefore report_desc = NULL, desc_len = 0
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const *desc_report, uint16_t desc_len) {
 
-    HOST = DINPUT;
-
     //LED ON
     led_on();
 
+    // Get vid pid
     uint16_t vid, pid;
     tuh_vid_pid_get(dev_addr, &vid, &pid);
-
     printf("HID device address = %d, instance = %d is mounted\r\n", dev_addr, instance);
     printf("VID = %04x, PID = %04x\r\n", vid, pid);
 
-    /*FALTA ACOMODAR!!!!!!*/
-    if (vid == 0x046d && (pid == 0xc219 || pid == 0xc216 || pid == 0xc218)) {
-        HID_HOST = LOGITECH;
-    } else if (vid == 0x054c && pid == 0x0268) {
-        HID_HOST = PS3;
-    } else if (vid == 0x2dc8 && pid == 0x3013) {
-        HID_HOST = EIGHT_BITDO;
-    } else if ((vid == 0x054c && (pid == 0x09cc || pid == 0x05c4)) || (vid == 0x0f0d && pid == 0x005e)
-               || (vid == 0x0f0d && pid == 0x00ee) || (vid == 0x1f4f && pid == 0x1002)) {
+    uint8_t const itf_protocol = tuh_hid_interface_protocol(dev_addr, instance);
 
-        HID_HOST = PS4;
-    } else {
-        uint8_t ret = generate_HID_report_info(desc_report, desc_len);
-        if (ret != 0) {
-            printf("Error: USB_ProcessHIDReport failed: %d\r\n", ret);
-            return;
-        }
-        HID_HOST = GENERIC;
+    switch (itf_protocol) {
+        case HID_ITF_PROTOCOL_KEYBOARD:
+        case HID_ITF_PROTOCOL_MOUSE:
+            HOST = KEYBOARD;
+            break;
+        default:
+            //(NEED TO CHECK THERE IS NOT ISSUES)
+            //HOST = DINPUT;
+            if (vid == 0x046d && (pid == 0xc219 || pid == 0xc216 || pid == 0xc218)) {
+                HID_HOST = LOGITECH;
+            } else if (vid == 0x054c && pid == 0x0268) {
+                HID_HOST = PS3;
+            } else if (vid == 0x2dc8 && pid == 0x3013) {
+                HID_HOST = EIGHT_BITDO;
+            } else if ((vid == 0x054c && (pid == 0x09cc || pid == 0x05c4)) || (vid == 0x0f0d && pid == 0x005e)
+                       || (vid == 0x0f0d && pid == 0x00ee) || (vid == 0x1f4f && pid == 0x1002)) {
+
+                HID_HOST = PS4;
+            } else {
+                uint8_t ret = generate_HID_report_info(desc_report, desc_len);
+                if (ret != 0) {
+                    printf("Error: USB_ProcessHIDReport failed: %d\r\n", ret);
+                    return;
+                }
+                HID_HOST = GENERIC;
+            }
+            break;
     }
 
     // request to receive report
@@ -637,34 +652,59 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
 
 // Invoked when received report from device via interrupt endpoint
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const *report, uint16_t len) {
-
-    if (len != 0) {
-        switch (HID_HOST) {
-            case LOGITECH:
-            case EIGHT_BITDO:
-            case PS3: {
-                uint8_t report_copy[len];
-                memcpy(&report_copy, report, len);
-                report_copy[0] = HID_HOST;
-                sendReportData(report_copy);
-            }
+    if(HOST == KEYBOARD) {
+        uint8_t const itf_protocol = tuh_hid_interface_protocol(dev_addr, instance);
+        switch (itf_protocol) {
+            case HID_ITF_PROTOCOL_KEYBOARD:
+                process_kbd_report(report, &keyboard_composite.keyboard_report, dev_addr, instance);
+                // Copy current values
+                keyboard_composite.current_keyboard_report = keyboard_composite.keyboard_report;
+                //sendReportData(&keyboard_composite);
                 break;
-            case PS4: {
-                //awful trick to don't collapse with LOGITECH case
-                uint8_t report_copy[10];
-                memcpy(&report_copy[2], &report[1], 4);
-                memcpy(&report_copy[6], &report[6], 4);
-                report_copy[1] = report[5];
-                report_copy[0] = HID_HOST;
-                sendReportData(report_copy);
-            }
+            case HID_ITF_PROTOCOL_MOUSE:
+                keyboard_composite.mouse_report.buttons = (uint8_t)report[0];
+                keyboard_composite.mouse_report.x = (int8_t)report[1];
+                keyboard_composite.mouse_report.y = (int8_t)report[2];
+                // Avoid to keyboard report remain with zero value due mouse report block
+                keyboard_composite.keyboard_report = keyboard_composite.current_keyboard_report;
                 break;
-            case GENERIC: {
-                uint8_t report_copy[7];
-                parse_report(report, len, report_copy);
-                sendReportData(report_copy);
-            }
+            default:
                 break;
+        }
+        // Send report
+        sendReportData(&keyboard_composite);
+        // Clear values
+        keyboard_composite.keyboard_report = 0;
+    }
+    else {
+        if (len != 0) {
+            switch (HID_HOST) {
+                case LOGITECH:
+                case EIGHT_BITDO:
+                case PS3: {
+                    uint8_t report_copy[len];
+                    memcpy(&report_copy, report, len);
+                    report_copy[0] = HID_HOST;
+                    sendReportData(report_copy);
+                }
+                    break;
+                case PS4: {
+                    //awful trick to don't collapse with LOGITECH case
+                    uint8_t report_copy[10];
+                    memcpy(&report_copy[2], &report[1], 4);
+                    memcpy(&report_copy[6], &report[6], 4);
+                    report_copy[1] = report[5];
+                    report_copy[0] = HID_HOST;
+                    sendReportData(report_copy);
+                }
+                    break;
+                case GENERIC: {
+                    uint8_t report_copy[7];
+                    parse_report(report, len, report_copy);
+                    sendReportData(report_copy);
+                }
+                    break;
+            }
         }
     }
 

@@ -15,11 +15,13 @@
 #include "hid_definitions.h"
 #include "psx_definitions.h"
 #include "n64_controller.h"
+#include "process_keyboard.h"
 //itself
 #include "convert_data.h"
 
 #include <stdio.h>
 #include "utils.h"
+#include "wm_reports.h"
 #include "pico/flash.h"
 
 //Definitions
@@ -178,16 +180,33 @@ void new_report_fun(void *report, MODE mode_host, void *new_report, MODE mode_de
                         break;
                 }
             }
-            break;   
+            break;
+        case KEYBOARD: {
+            int8_t mouse_x = ((keyboard_mouse_report_t *) report)->mouse_report.x;
+            int8_t mouse_y = ((keyboard_mouse_report_t *) report)->mouse_report.y;
+            double scaled_mouse_x = mouse_x / 20.0;
+            double scaled_mouse_y = mouse_y / 20.0;
+            scaled_mouse_x = (scaled_mouse_x > 1 ? 1 : scaled_mouse_x < -1 ? -1 : scaled_mouse_x);
+            scaled_mouse_y = (scaled_mouse_y > 1 ? 1 : scaled_mouse_y < -1 ? -1 : scaled_mouse_y);
+            scaled_mouse_x = get_scaled_mouse_axis(scaled_mouse_x, 0, report);
+            scaled_mouse_y = -get_scaled_mouse_axis(scaled_mouse_y, 1, report);
+            host_report.sThumbRX = (int16_t)(scaled_mouse_x * XINPUT_JOYSTICK_MID_UINT16);
+            host_report.sThumbRY = (int16_t)(scaled_mouse_y * XINPUT_JOYSTICK_MID_UINT16);
+            // Check mouse buttons
+            ((keyboard_mouse_report_t *) report)->keyboard_report |= (((keyboard_mouse_report_t *) report)->mouse_report.buttons & (1 << 0) ? XINPUT_GAMEPAD_A : 0);    //LEFT
+            ((keyboard_mouse_report_t *) report)->keyboard_report |= (((keyboard_mouse_report_t *) report)->mouse_report.buttons & (1 << 1) ? XINPUT_GAMEPAD_B : 0);    //RIGHT
+            ((keyboard_mouse_report_t *) report)->keyboard_report |= (((keyboard_mouse_report_t *) report)->mouse_report.buttons & (1 << 2) ? XINPUT_GAMEPAD_X : 0);    //MIDDLE
+            report = &((keyboard_mouse_report_t *) report)->keyboard_report;
+        }
         case KBD_PS2:
-            memcpy(&host_report, (uint32_t*)report, sizeof(uint16_t));
+            memcpy(&host_report.wButtons, (uint32_t*)report, sizeof(uint16_t));
             host_report.sThumbLX = ((KEYBOARD_MASK_REVERSE(*(uint32_t*)report, 16) * -32768) | 
                                     (KEYBOARD_MASK_REVERSE(*(uint32_t*)report, 17) * 32767));
             host_report.sThumbLY = ((KEYBOARD_MASK_REVERSE(*(uint32_t*)report, 18) * 32767) | 
                                     (KEYBOARD_MASK_REVERSE(*(uint32_t*)report, 19) * -32768));
-            //NO RIGHT JOYSTICK
-            host_report.sThumbRX = 0;
-            host_report.sThumbRY = 0;
+            //NO RIGHT JOYSTICK ?
+            host_report.sThumbRX = (mode_host == KEYBOARD ? host_report.sThumbRX : 0);
+            host_report.sThumbRY = (mode_host == KEYBOARD ? host_report.sThumbRY : 0);
 
             host_report.bLeftTrigger = (KEYBOARD_MASK_REVERSE(*(uint32_t*)report, 24) * 0xFF);
             host_report.bRightTrigger = (KEYBOARD_MASK_REVERSE(*(uint32_t*)report, 25) * 0xFF);

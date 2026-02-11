@@ -8,6 +8,7 @@ typedef enum {
     WII,
     GC,
     N64,
+    KEYBOARD,
     WEB
 } MODE;
 
