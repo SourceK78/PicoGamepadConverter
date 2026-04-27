@@ -1,0 +1,33 @@
+# Build directories
+build*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.make
+
+# Pico SDK build artifacts
+*.elf
+*.bin
+*.uf2
+*.hex
+*.map
+*.dis
+
+# PIO generated headers
+*.pio.h
+
+# Picotool (fetched at build time)
+picotool/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
