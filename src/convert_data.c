@@ -119,7 +119,7 @@ void new_report_fun(void *report, MODE mode_host, void *new_report, MODE mode_de
                                                (buttons2 & PS3_GAMEPAD_CROSS ? XINPUT_GAMEPAD_A : 0) |
                                                (buttons2 & PS3_GAMEPAD_CIRCLE ? XINPUT_GAMEPAD_B : 0) |
                                                (buttons2 & PS3_GAMEPAD_SQUARE ? XINPUT_GAMEPAD_X : 0) |
-                                               (buttons2 & PS3_GAMEPAD_TRIANGLE ? XINPUT_GAMEPAD_A : 0) |
+                                               (buttons2 & PS3_GAMEPAD_TRIANGLE ? XINPUT_GAMEPAD_Y : 0) |
                                                (buttons2 & PS3_GAMEPAD_R1 ? XINPUT_GAMEPAD_LEFT_SHOULDER : 0) |
                                                (buttons2 & PS3_GAMEPAD_R2 ? XINPUT_GAMEPAD_RIGHT_SHOULDER : 0) |
                                                (buttons3 ? XINPUT_GAMEPAD_GUIDE : 0);

@@ -617,6 +617,10 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const *desc_re
                 HID_HOST = LOGITECH;
             } else if (vid == 0x054c && pid == 0x0268) {
                 HID_HOST = PS3;
+                // DS3 requires a SET_REPORT Feature(0xF4) to start sending input reports
+                uint8_t const ds3_cmd[] = {0x42, 0x0c, 0x00, 0x00};
+                tuh_hid_set_report(dev_addr, instance, 0xF4, HID_REPORT_TYPE_FEATURE,
+                                   (void*)ds3_cmd, sizeof(ds3_cmd));
             } else if (vid == 0x2dc8 && pid == 0x3013) {
                 HID_HOST = EIGHT_BITDO;
             } else if ((vid == 0x054c && (pid == 0x09cc || pid == 0x05c4)) || (vid == 0x0f0d && pid == 0x005e)
